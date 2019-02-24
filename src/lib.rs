@@ -28,11 +28,11 @@ pub enum MessageType {
 #[derive(Debug, Deserialize)]
 pub struct SbsHeader {
     pub message_type: MessageType,
-    pub transmission_type: Option<String>,
-    pub session_id: String,
-    pub aircraft_id: String,
+    pub transmission_type: Option<u32>,
+    pub session_id: u32,
+    pub aircraft_id: u32,
     pub hex_ident: String,
-    pub flight_id: String,
+    pub flight_id: u32,
     #[serde(with = "read_date")]
     pub generated_date: NaiveDate,
     pub generated_time: String,
@@ -44,13 +44,13 @@ pub struct SbsHeader {
 
 #[derive(Debug, Deserialize)]
 pub struct SbsMessageExtension {
-    pub common: SbsHeader,
+    pub header: SbsHeader,
     pub altitude: Option<String>,
-    pub ground_speed: Option<String>,
-    pub track: Option<String>,
+    pub ground_speed: Option<f64>,
+    pub track: Option<f64>,
     pub lat: Option<String>,
     pub lon: Option<String>,
-    pub vertical_rate: Option<String>,
+    pub vertical_rate: Option<u32>,
     pub squawk: Option<String>,
     pub alert: Option<bool>,
     pub emergency: Option<bool>,
