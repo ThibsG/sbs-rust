@@ -1,68 +1,12 @@
 extern crate chrono;
 extern crate csv;
-#[macro_use]
 extern crate serde_derive;
 
-use chrono::prelude::NaiveDate;
+mod lib;
+
+use lib::{MessageType, SbsHeader, SbsMessageExtension};
 use std::error::Error;
 use std::process;
-
-mod read_date {
-    use chrono::prelude::NaiveDate;
-    use serde::{self, Deserialize, Deserializer};
-    const FORMAT: &'static str = "%Y/%m/%d";
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        NaiveDate::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Debug, Deserialize)]
-enum MessageType {
-    SEL,
-    ID,
-    AIR,
-    STA,
-    CLK,
-    MSG,
-}
-
-#[derive(Debug, Deserialize)]
-struct SbsCommon {
-    message_type: MessageType,
-    transmission_type: Option<String>,
-    session_id: String,
-    aircraft_id: String,
-    hex_ident: String,
-    flight_id: String,
-    #[serde(with = "read_date")]
-    generated_date: NaiveDate,
-    generated_time: String,
-    #[serde(with = "read_date")]
-    logged_date: NaiveDate,
-    logged_time: String,
-    callsign: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct SbsMessage {
-    common: SbsCommon,
-    altitude: Option<String>,
-    ground_speed: Option<String>,
-    track: Option<String>,
-    lat: Option<String>,
-    lon: Option<String>,
-    vertical_rate: Option<String>,
-    squawk: Option<String>,
-    alert: Option<bool>,
-    emergency: Option<bool>,
-    spi: Option<bool>,
-    is_on_ground: Option<bool>,
-}
 
 fn read() -> Result<(), Box<Error>> {
     let csv = "SEL,,496,2286,4CA4E5,27215,2010/02/19,18:06:07.710,2010/02/19,18:06:07.710,RYR1427
@@ -75,29 +19,17 @@ SEL,,499,2286,4CA4E5,27215,2010/02/19,18:06:07.710,2010/02/19,18:06:07.710,RYR14
         .from_reader(csv.as_bytes());
 
     for record in reader.records() {
-        println!("----------");
-        let frame = record?;
-        println!("{:?}", frame);
+        let rec = record?;
+        let frame: SbsHeader = rec.deserialize(None)?;
+        println!("- {:?}", frame);
 
-        if &frame[0] == "MSG" {
-            println!("MSG !");
-            let msg: SbsMessage = frame.deserialize(None)?;
-            println!("{:?}", msg);
-        } else {
-            println!("NOT A MSG !");
-            let cmn: SbsCommon = frame.deserialize(None)?;
-            println!("{:?}", cmn);
+        match frame.message_type {
+            MessageType::MSG => {
+                let msg: SbsMessageExtension = rec.deserialize(None)?;
+                println!("- {:?}", msg);
+            }
+            _ => (),
         }
-
-        /*println!(
-            "{} | {:?} | {} | {}",
-            frame.message_type, frame.transmission_type, frame.session_id, frame.aircraft_id
-        );
-
-        match frame.message_type.as_ref() {
-            "MSG" => println!("MSG !"),
-            _ => println!("Nan: {}", frame.message_type),
-        }*/
     }
 
     Ok(())

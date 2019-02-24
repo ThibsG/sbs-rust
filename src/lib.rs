@@ -1,18 +1,59 @@
+use chrono::prelude::NaiveDate;
+use serde::Deserialize;
 
+mod read_date {
+    use chrono::prelude::NaiveDate;
+    use serde::{self, Deserialize, Deserializer};
+    const FORMAT: &'static str = "%Y/%m/%d";
 
-pub mod sbs1 {
-    pub enum MessageType {
-        SelChange,
-        NewId,
-        NewAircraft,
-        StatusAircraft,
-        Click,
-        Transmission
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        NaiveDate::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
     }
+}
 
-    pub struct Message {
-        msg_type: MessageType,
-        tr_type: String,
-        session_id: String,
-    }
+#[derive(Debug, Deserialize)]
+pub enum MessageType {
+    SEL,
+    ID,
+    AIR,
+    STA,
+    CLK,
+    MSG,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SbsHeader {
+    pub message_type: MessageType,
+    pub transmission_type: Option<String>,
+    pub session_id: String,
+    pub aircraft_id: String,
+    pub hex_ident: String,
+    pub flight_id: String,
+    #[serde(with = "read_date")]
+    pub generated_date: NaiveDate,
+    pub generated_time: String,
+    #[serde(with = "read_date")]
+    pub logged_date: NaiveDate,
+    pub logged_time: String,
+    pub callsign: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SbsMessageExtension {
+    pub common: SbsHeader,
+    pub altitude: Option<String>,
+    pub ground_speed: Option<String>,
+    pub track: Option<String>,
+    pub lat: Option<String>,
+    pub lon: Option<String>,
+    pub vertical_rate: Option<String>,
+    pub squawk: Option<String>,
+    pub alert: Option<bool>,
+    pub emergency: Option<bool>,
+    pub spi: Option<bool>,
+    pub is_on_ground: Option<bool>,
 }
